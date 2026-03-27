@@ -13,12 +13,21 @@ jobs:
           - os: ubuntu-22.04
             platform: linux-amd64
             archive_ext: tar.gz
+          - os: ubuntu-22.04-arm
+            platform: linux-arm64
+            archive_ext: tar.gz
+          - os: macos-15-intel
+            platform: macos-amd64
+            archive_ext: tar.gz
+          - os: macos-15
+            platform: macos-arm64
+            archive_ext: tar.gz
           - os: windows-latest
             platform: windows-amd64
             archive_ext: zip
-          - os: macos-14
-            platform: macos-arm64
-            archive_ext: tar.gz
+          - os: windows-11-arm
+            platform: windows-arm64
+            archive_ext: zip
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
@@ -46,9 +55,9 @@ jobs:
           path: |
             ~/.cache/Nuitka
             ~/AppData/Local/Nuitka/Nuitka/Cache
-          key: nuitka-${{ matrix.os }}-${{ hashFiles('build_config.py', 'src/**/*.py') }}
+          key: nuitka-${{ matrix.platform }}-${{ hashFiles('build_config.py', 'src/**/*.py') }}
           restore-keys: |
-            nuitka-${{ matrix.os }}-
+            nuitka-${{ matrix.platform }}-
 
       - name: Install Python dependencies
         run: |
@@ -65,6 +74,9 @@ jobs:
           DIST_DIR=$(ls -d *.dist)
           mv "$DIST_DIR" ykt-cli-${{ matrix.platform }}
           tar -czf ykt-cli-${{ matrix.platform }}.tar.gz ykt-cli-${{ matrix.platform }}/
+          cd ..
+          VERSION=${GITHUB_REF_NAME#v}
+          bash packaging/build_deb.sh dist/ykt-cli-${{ matrix.platform }} ${{ matrix.platform }} "$VERSION"
 
       - name: Package (macOS)
         if: runner.os == 'macOS'
@@ -88,6 +100,13 @@ jobs:
           Rename-Item $distDir.FullName "ykt-cli-${{ matrix.platform }}"
           Compress-Archive -Path "ykt-cli-${{ matrix.platform }}" -DestinationPath "ykt-cli-${{ matrix.platform }}.zip"
 
+      - name: Build Windows installer
+        if: runner.os == 'Windows'
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
+        with:
+          path: packaging/ykt-cli${{ matrix.platform == 'windows-arm64' && '-arm64' || '' }}.iss
+          options: /DMyAppVersion=${{ github.ref_name }}
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -95,6 +114,8 @@ jobs:
           path: |
             dist/ykt-cli-${{ matrix.platform }}.${{ matrix.archive_ext }}
             dist/ykt-cli-${{ matrix.platform }}.pkg
+            dist/ykt-cli-${{ matrix.platform }}.deb
+            dist/ykt-cli-${{ matrix.platform }}-setup.exe
 
   release:
     needs: build
