@@ -25,9 +25,6 @@ jobs:
           - os: windows-latest
             platform: windows-amd64
             archive_ext: zip
-          - os: windows-11-arm
-            platform: windows-arm64
-            archive_ext: zip
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
@@ -104,7 +101,7 @@ jobs:
         if: runner.os == 'Windows'
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
         with:
-          path: packaging/ykt-cli${{ matrix.platform == 'windows-arm64' && '-arm64' || '' }}.iss
+          path: packaging/ykt-cli.iss
           options: /DMyAppVersion=${{ github.ref_name }}
 
       - name: Upload artifact
