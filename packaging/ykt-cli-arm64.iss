@@ -9,7 +9,7 @@ AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567891}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 DefaultDirName={autopf}\ykt-cli
-OutputDir=dist
+OutputDir=..\dist
 OutputBaseFilename=ykt-cli-windows-arm64-setup
 Compression=lzma2
 SolidCompression=yes
@@ -20,7 +20,7 @@ DisableProgramGroupPage=yes
 PrivilegesRequired=admin
 
 [Files]
-Source: "dist\ykt-cli-windows-arm64\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
+Source: "..\dist\ykt-cli-windows-arm64\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [Code]
 const
