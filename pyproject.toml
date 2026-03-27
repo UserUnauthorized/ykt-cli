@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ykt-cli"
+version = "0.1.0"
+description = "雨课堂平台 CLI 工具"
+requires-python = ">=3.12"
+dependencies = [
+    "playwright==1.50.0",
+    "playwright-stealth==2.0.2",
+    "openai>=2.5.0",
+    "typer>=0.9",
+    "rich>=14.0",
+    "httpx>=0.27",
+    "img2pdf>=0.6",
+    "qrcode>=8.0",
+    "pyyaml>=6.0",
+    "questionary>=2.1",
+    "onepassword-sdk",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[project.scripts]
+ykt = "src.main:app"
+
+[tool.setuptools.packages.find]
+include = ["src*"]

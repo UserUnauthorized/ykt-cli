@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+dist/
+*.egg-info/
+.pytest_cache/
+state.json
+output/
+logs/
+.idea/
+.DS_Store
+stage1_minified/
+stage2_encrypted/

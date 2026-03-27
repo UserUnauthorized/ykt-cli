@@ -1,0 +1,116 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: linux-amd64
+            archive_ext: tar.gz
+          - os: windows-latest
+            platform: windows-amd64
+            archive_ext: zip
+          - os: macos-14
+            platform: macos-arm64
+            archive_ext: tar.gz
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install system deps (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc g++ patchelf
+
+      - name: Cache Nuitka compilations
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/Nuitka
+            ~/AppData/Local/Nuitka/Nuitka/Cache
+          key: nuitka-${{ matrix.os }}-${{ hashFiles('build_config.py', 'src/**/*.py') }}
+          restore-keys: |
+            nuitka-${{ matrix.os }}-
+
+      - name: Install Python dependencies
+        run: |
+          pip install .
+          pip install nuitka ordered-set
+
+      - name: Nuitka compile
+        run: python build_config.py
+
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cd dist
+          DIST_DIR=$(ls -d *.dist)
+          mv "$DIST_DIR" ykt-cli-${{ matrix.platform }}
+          tar -czf ykt-cli-${{ matrix.platform }}.tar.gz ykt-cli-${{ matrix.platform }}/
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          cd dist
+          DIST_DIR=$(ls -d *.dist)
+          mv "$DIST_DIR" ykt-cli-${{ matrix.platform }}
+          tar -czf ykt-cli-${{ matrix.platform }}.tar.gz ykt-cli-${{ matrix.platform }}/
+          VERSION=${GITHUB_REF_NAME#v}
+          mkdir -p /tmp/ykt-pkg/usr/local/bin /tmp/ykt-pkg/usr/local/lib/ykt-cli
+          cp -R ykt-cli-${{ matrix.platform }}/* /tmp/ykt-pkg/usr/local/lib/ykt-cli/
+          ln -sf ../lib/ykt-cli/ykt /tmp/ykt-pkg/usr/local/bin/ykt
+          pkgbuild --root /tmp/ykt-pkg --identifier moe.401.ykt-cli --version "$VERSION" --install-location / ykt-cli-${{ matrix.platform }}.pkg
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cd dist
+          $distDir = Get-ChildItem -Directory -Filter "*.dist" | Select-Object -First 1
+          Rename-Item $distDir.FullName "ykt-cli-${{ matrix.platform }}"
+          Compress-Archive -Path "ykt-cli-${{ matrix.platform }}" -DestinationPath "ykt-cli-${{ matrix.platform }}.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ykt-cli-${{ matrix.platform }}
+          path: |
+            dist/ykt-cli-${{ matrix.platform }}.${{ matrix.archive_ext }}
+            dist/ykt-cli-${{ matrix.platform }}.pkg
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true
+          draft: false
